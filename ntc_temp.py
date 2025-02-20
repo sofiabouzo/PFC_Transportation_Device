@@ -2,7 +2,7 @@ import serial
 import csv
 import time
 
-PORT = "/dev/tty.usbmodem1101" 
+PORT = "COM6" 
 
 
 BAUD_RATE = 9600
@@ -11,7 +11,7 @@ BAUD_RATE = 9600
 arduino = serial.Serial(PORT, BAUD_RATE)
 time.sleep(2)  # Esperar a que Arduino inicie
 
-filename = "datos_18.02_concarga.csv"
+filename = "datos_20.02_concarga.csv"
 
 # Abrir archivo CSV para guardar datos
 with open(filename, "w", newline="") as file:
