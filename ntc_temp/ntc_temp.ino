@@ -2,7 +2,7 @@
 #include <math.h>
 
 #define CONFIG_THERMISTOR_ADC_PIN A0
-#define CONFIG_THERMISTOR_RESISTOR 9855l //resistencia en serie con termistor
+#define CONFIG_THERMISTOR_RESISTOR 9890l //resistencia en serie con termistor
 
 int32_t thermistor_get_resistance(uint16_t adcval)
 {
@@ -12,7 +12,7 @@ int32_t thermistor_get_resistance(uint16_t adcval)
 float thermistor_get_temperature(int32_t resistance)
 {
   float temp = log(resistance);
-  temp = 1 / (0.00013851124897641025 + (0.0004137990275744092 * temp) + (-0.000000681439906738466 * temp * temp * temp));
+  temp = 1 / (0.0011487729471781924 + 0.0002291945054659473 * temp + 1.1834801498089633e-7 * temp * temp * temp);
   return (temp - 273.15);
 }
 

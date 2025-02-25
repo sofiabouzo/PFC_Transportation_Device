@@ -2,7 +2,8 @@ import serial
 import csv
 import time
 
-PORT = "COM6" 
+#PORT = "COM6" 
+PORT= '/dev/cu.usbmodem1101'
 
 
 BAUD_RATE = 9600
@@ -11,7 +12,7 @@ BAUD_RATE = 9600
 arduino = serial.Serial(PORT, BAUD_RATE)
 time.sleep(2)  # Esperar a que Arduino inicie
 
-filename = "datos_20.02_concarga.csv"
+filename = "/Users/sofia/Desktop/PFC_Transportation_Device/registros/prueb_inutil.csv"
 
 # Abrir archivo CSV para guardar datos
 with open(filename, "w", newline="") as file:
@@ -28,9 +29,10 @@ with open(filename, "w", newline="") as file:
                 valores = dato.split(",")  # Separar los valores
                 
                 print(f"Guardado: {valores}")
-                if i==29:
+                if i==0 or i==29:
                     writer.writerow(valores)  # Guardar en CSV
-                    i=-1
+                    if i==29:
+                        i= 0
                 i+=1
         except KeyboardInterrupt:
             print("\nFinalizando...")
