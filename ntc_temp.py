@@ -1,6 +1,8 @@
 import serial
 import csv
 import time
+from datetime import datetime
+
 
 #PORT = "COM6" 
 PORT= '/dev/cu.usbmodem1101'
@@ -11,8 +13,10 @@ BAUD_RATE = 9600
 # Abrir conexión con Arduino
 arduino = serial.Serial(PORT, BAUD_RATE)
 time.sleep(2)  # Esperar a que Arduino inicie
-#filename = "C:\\Users\\VALENTINA\\PFC_Transportation_Device\\registros\\datos_05.03_sincarga_otro.csv"
-filename = "/Users/sofia/Desktop/PFC_Transportation_Device/registros/datos_06.03_sincarga_nuevo.csv"
+#filename = f"C:\\Users\\VALENTINA\\PFC_Transportation_Device\\registros\\datos_{fecha_hora}.csv"
+fecha_hora = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") 
+filename = f"/Users/sofia/Desktop/PFC_Transportation_Device/registros/datos_{fecha_hora}.csv"
+
 
 # Abrir archivo CSV para guardar datos
 with open(filename, "w", newline="") as file:
