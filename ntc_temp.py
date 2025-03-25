@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 
 
-#PORT = "COM6" 
-PORT= '/dev/cu.usbmodem1101'
+PORT = "COM9" 
+#PORT= '/dev/cu.usbmodem1101'
 
 
 BAUD_RATE = 9600
@@ -13,9 +13,9 @@ BAUD_RATE = 9600
 # Abrir conexión con Arduino
 arduino = serial.Serial(PORT, BAUD_RATE)
 time.sleep(2)  # Esperar a que Arduino inicie
-#filename = f"C:\\Users\\VALENTINA\\PFC_Transportation_Device\\registros\\datos_{fecha_hora}.csv"
-fecha_hora = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") 
-filename = f"/Users/sofia/Desktop/PFC_Transportation_Device/registros/datos_{fecha_hora}.csv"
+fecha_hora = datetime.now().strftime("%Y-%m-%d_%H-%M") 
+filename = f"C:\\Users\\VALENTINA\\PFC_Transportation_Device\\registros\\datos_{fecha_hora}_prefrio_cargaTempAmb.csv"
+#filename = f"/Users/sofia/Desktop/PFC_Transportation_Device/registros/datos_{fecha_hora}.csv"
 
 
 # Abrir archivo CSV para guardar datos
