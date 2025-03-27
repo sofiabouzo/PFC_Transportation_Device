@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <math.h>
 #include <SD.h>
+#include <TimerThree.h>
 
 
 // Display connections: 5V Y GROUND!!
@@ -29,7 +30,8 @@ const int rs = 25, en = 23, d4 = 28, d5 = 26, d6 = 24, d7 = 22;
 #define CONFIG_THERMISTOR_RESISTOR 9890l //resistencia en serie con termistor
 #define SD_CS_PIN 53
 #define RED_LED 4
-#define GREEN_LED 5
+#define GREEN_LED 3
+#define YLLW_LED 5
 bool editingDate = false;  // flag to start editing the date
 int position = 0;  // selected field:  0: day, 1: month
 int day = 1, month = 1; // starting date
@@ -62,8 +64,11 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 void setup() {
   
   lcd.begin(16, 2); // LCD number of columns and rows
+  
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
+  pinMode(YLLW_LED, OUTPUT);
+
   Serial.begin(9600); // intialize series comunication
 
   if (!SD.begin(SD_CS_PIN)) {
@@ -212,7 +217,9 @@ float thermistor_get_temperature(int32_t resistance)
 void ntc_data(){
   uint32_t ultimaResistencia = thermistor_get_resistance(analogRead(CONFIG_THERMISTOR_ADC_PIN));
   ultimaTemperatura = thermistor_get_temperature(ultimaResistencia); // actualizamos la variable global
-  if (ultimaTemperatura >= 14.0) status= 1; else status=0;
+  if (ultimaTemperatura >= 14.0) status= 1; 
+  else if (ultimaTemperatura > 8) status= 2;
+  else if (ultimaTemperatura >2) status= 0;
    
 }
 
@@ -258,10 +265,17 @@ void ledOutput(){
   switch (status){
     case 0:
       digitalWrite(RED_LED, LOW);
+      digitalWrite(YLLW_LED, LOW);
       digitalWrite(GREEN_LED, HIGH);
       break;
     case 1:
       digitalWrite(RED_LED, HIGH);
+      digitalWrite(YLLW_LED, LOW);
+      digitalWrite(GREEN_LED, LOW);
+      break;
+    case 2:
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(YLLW_LED, HIGH);
       digitalWrite(GREEN_LED, LOW);
       break;
   }
