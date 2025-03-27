@@ -13,11 +13,23 @@
 // RS         ->  Pin 25 (blanco)
 // E          ->  Pin 23 (amarillo)
 
+
+// Conexiones:
+// ---------------------------
+// MOSI       ->  Pin 51
+// MISO       ->  Pin 50
+// SCK        ->  Pin 52
+// CS         ->  Pin 53 
+// VCC        ->  5V
+// GND        ->  GND
+
 const int rs = 25, en = 23, d4 = 28, d5 = 26, d6 = 24, d7 = 22;
 #define btn A0
 #define CONFIG_THERMISTOR_ADC_PIN A1
 #define CONFIG_THERMISTOR_RESISTOR 9890l //resistencia en serie con termistor
 #define SD_CS_PIN 53
+#define RED_LED 4
+#define GREEN_LED 5
 bool editingDate = false;  // flag to start editing the date
 int position = 0;  // selected field:  0: day, 1: month
 int day = 1, month = 1; // starting date
@@ -27,6 +39,7 @@ const int year=25;
 unsigned long currentTime; // time since the Arduino was initialized 
 unsigned long lastSample = 0;
 const long freq = 3000; // 30 s
+int status= 1; // to seee if temp is above or below setpoint
 
 
 String selectedDate;
@@ -49,6 +62,8 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 void setup() {
   
   lcd.begin(16, 2); // LCD number of columns and rows
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
   Serial.begin(9600); // intialize series comunication
 
   if (!SD.begin(SD_CS_PIN)) {
@@ -197,7 +212,7 @@ float thermistor_get_temperature(int32_t resistance)
 void ntc_data(){
   uint32_t ultimaResistencia = thermistor_get_resistance(analogRead(CONFIG_THERMISTOR_ADC_PIN));
   ultimaTemperatura = thermistor_get_temperature(ultimaResistencia); // actualizamos la variable global
-    
+  if (ultimaTemperatura >= 14.0) status= 1; else status=0;
    
 }
 
@@ -238,6 +253,22 @@ void set_date_lcd(){
   }
 }
 
+// --------------- MANAGE LED ON/OFF ----------------
+void ledOutput(){
+  switch (status){
+    case 0:
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(GREEN_LED, HIGH);
+      break;
+    case 1:
+      digitalWrite(RED_LED, HIGH);
+      digitalWrite(GREEN_LED, LOW);
+      break;
+  }
+
+
+}
+
 // --------------- STOP RECORDING ----------------
 void stopRecording() {
   // Último guardado para asegurar que no se pierdan datos
@@ -257,6 +288,7 @@ void loop() {
       ntc_data();
       saveSD(currentTime);
       displayData();
+      ledOutput();
       }
   }
   else if (!editingDate && !recordingState) {
