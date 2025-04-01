@@ -32,10 +32,14 @@ const int rs = 25, en = 23, d4 = 28, d5 = 26, d6 = 24, d7 = 22;
 #define RED_LED 4
 #define GREEN_LED 3
 #define YLLW_LED 5
+#define BUZZER 6   // Pin del MODULADOR del buzzer (HIGH se apaga)
+
 bool editingDate = false;  // flag to start editing the date
+bool buzzerMuted = true;
 int position = 0;  // selected field:  0: day, 1: month
 int day = 1, month = 1; // starting date
 const int year=25;
+
 
 // time management
 unsigned long currentTime; // time since the Arduino was initialized 
@@ -68,6 +72,9 @@ void setup() {
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
   pinMode(YLLW_LED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  digitalWrite(BUZZER, HIGH); // Apagado al inicio
+
 
   Serial.begin(9600); // intialize series comunication
 
@@ -254,7 +261,10 @@ void set_date_lcd(){
       lcd.print("        "); // Clear the line (8 spaces for DD/MM/YY)
       displayData();       // Show the current date
     } else if (key == btnSELECT && recordingState ) {
-      stopRecording(); // Detener con SELECT después de confirmar fecha
+      stopRecording(); // Stop recording with SELECT
+    }else if (key == btnRIGHT && buzzerMuted ) {
+      buzzerMuted= false;
+      ledOutput(); // stop BUZZER with RIGHT
     }
     delay(200);           // Basic debounce to prevent multiple triggers
   }
@@ -263,20 +273,27 @@ void set_date_lcd(){
 // --------------- MANAGE LED ON/OFF ----------------
 void ledOutput(){
   switch (status){
-    case 0:
+    case 0: // green on
       digitalWrite(RED_LED, LOW);
       digitalWrite(YLLW_LED, LOW);
       digitalWrite(GREEN_LED, HIGH);
+      buzzerMuted = false; // resets the buzzer so if temperature desestabilizes again it can ring
       break;
-    case 1:
+    case 1: // red on
       digitalWrite(RED_LED, HIGH);
       digitalWrite(YLLW_LED, LOW);
       digitalWrite(GREEN_LED, LOW);
+      if (!buzzerMuted) {
+        digitalWrite(BUZZER, HIGH); // Buzzer encendido solo si no está muteado
+      } else {
+        digitalWrite(BUZZER, LOW); // Mantener apagado si lo mutearon
+      }
       break;
-    case 2:
+    case 2: // yellow on
       digitalWrite(RED_LED, LOW);
       digitalWrite(YLLW_LED, HIGH);
       digitalWrite(GREEN_LED, LOW);
+      buzzerMuted = false; // resets the buzzer so if temperature desestabilizes again it can ring
       break;
   }
 
@@ -289,6 +306,7 @@ void stopRecording() {
   saveSD(currentTime);
   recordingState = false; // Detener mediciones y guardado
   displayData(); // Mostrar mensaje de detenido
+  return;
 }
   
 void loop() {
