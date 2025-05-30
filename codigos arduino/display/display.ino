@@ -25,14 +25,17 @@
 // GND        ->  GND
 
 const int rs = 25, en = 23, d4 = 28, d5 = 26, d6 = 24, d7 = 22;
-#define btn A0
-#define CONFIG_THERMISTOR_ADC_PIN A1
+#define BATTERY_LEVEL A0
+#define btn A1
+#define CONFIG_THERMISTOR_ADC_PIN A2
 #define CONFIG_THERMISTOR_RESISTOR 9890l //resistencia en serie con termistor
 #define SD_CS_PIN 53
-#define RED_LED 4
-#define GREEN_LED 3
-#define YLLW_LED 5
-#define BUZZER 6   // Pin del MODULADOR del buzzer (HIGH se apaga)
+
+#define GREEN_LED 9
+#define YLLW_LED 10
+#define RED_LED 11
+#define DOOR 12
+#define BUZZER 13   // Pin del MODULADOR del buzzer (HIGH se apaga)
 
 bool editingDate = false;  // flag to start editing the date
 bool buzzerMuted = true;
