@@ -344,6 +344,7 @@ void ledOutput(){
 void saveSD(unsigned long t) {
   String fileName = selectedDate + String(".csv");
   File archivo = SD.open(fileName, FILE_WRITE);
+  
   if (archivo) {
     archivo.print(t / 1000);
     archivo.print(",");
@@ -427,8 +428,8 @@ void batteryIndicator(){
 ISR(TIMER3_COMPA_vect) {
     if(counter > 0) counter--;
     else {
-      counter = 1500;
-      flagSampleTime = (flagSampleTime==true)? false:true; // Changes bool state so the period y twice the counter
+      counter = 3000;
+      flagSampleTime = true; // marca la ocurrencia del evento
     }
 }
 
@@ -466,7 +467,6 @@ void loop() {
       //lcd.setCursor(0, 1); // Reset cursor to start of second line
       //lcd.print("        "); // Clear the line (8 spaces for DD/MM/YY)
       displayData();       // Show the current date
-      batteryIndicator();
       delay(200); // for debouncing
       
       break;
@@ -475,15 +475,18 @@ void loop() {
       alarm();
       if (flagSampleTime) {
         // de la ISR que se ejecuta cada Ts = 1/fs segundos sale esta flag
+        flagSampleTime = false; //la consumo
         ntc_data();
         currentTime = millis() - startRecordingTime;
+        pid.Compute();                // Calcula nueva salida PWM
+        analogWrite(pinPWM, 255-output_pid);
+
         saveSD(currentTime);
+
         displayData();
         ledOutput();
         batteryIndicator();
 
-        pid.Compute();                // Calcula nueva salida PWM
-        analogWrite(pinPWM, 255-output_pid);
       }
 
 
