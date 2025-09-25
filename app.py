@@ -1,13 +1,11 @@
 import streamlit as st
 import pandas as pd
 import time
-from io import StringIO
-import plotly.express as px
 import plotly.graph_objects as go
 
 st.set_page_config(
     page_title="TempTracker",
-    page_icon="🫀"
+    page_icon="🌡️"
 )
 
 # Global variables definitions
@@ -48,37 +46,26 @@ def login_page() -> None:
 
 
 def menu_page():
-
-
     st.sidebar.write(f"**Bienvenido**: {st.session_state.user_email}")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.logged_in = False
         st.rerun()
 
     with st.sidebar:
-        st.markdown('<h1 style="color:#a01545;">🚑 Control Center</h1>', unsafe_allow_html=True)
-        st.subheader("Ingrese el *tracking code* del traslado:")
-        st.session_state.codigo= st.text_input("Código de seguimiento")
-        if st.sidebar.button("Buscar"):
-            st.session_state.buscar= True
+        st.subheader("Finalidad")
+        st.markdown("El objetivo de esta página es facilitar la visualización de los datos al llegar al destino. Se realiza una representación gráfica de la evolución temporal de la temperatura del interior de la cámara junto con métricas relevantes para evaluar la viabilidad celular de la muestra.")
         st.markdown('<h1 style="color:#a01545;">📈 Análisis tiempo temp</h1>', unsafe_allow_html=True)
-        uploaded_file= st.sidebar.file_uploader("seleccione el archivo que quiera graficar:", type = ["csv"])
+        uploaded_file= st.sidebar.file_uploader("Seleccione el archivo que quiera graficar:", type = ["csv"])
         if st.sidebar.button("Graficar"):
             st.session_state.graficar= True
 
-    #st.header("Ingrese el código para continuar")
-    if st.session_state.buscar:
-        st.subheader("Estado de transporte", anchor= "status", divider= 'grey')
-        st.write("El dispositivo se encuentra: ....")
-        st.subheader("Temperatura", anchor= "temperature", divider= 'grey')
-        st.write("La temperatura actual es:")
     
     if st.session_state.graficar:
         st.header(f"Gráfico del documento {uploaded_file.name}" )
         df = pd.read_csv(uploaded_file, sep=",", encoding="utf-8", header=None)
-        df.columns = ['Tiempo', 'Temperatura', 'PID']
+        df.columns = ['Tiempo', 'Temperatura', 'Puerta']
 
-        show_df = st.checkbox("Seleccione para visualaizar los datos en formato tabla.")
+        show_df = st.checkbox("Seleccione para visualizar los datos en formato tabla.")
 
         if show_df:
             st.dataframe(df) # solo muestra el df, lo podemos sacar
@@ -118,6 +105,17 @@ def menu_page():
             line=dict(color='#a1677b')
         ))
 
+        # Puntos de puerta abierta
+        df_abierta = df[df["Puerta"] == 1]
+
+        fig.add_trace(go.Scatter(
+            x=df_abierta["Tiempo"],
+            y=df_abierta["Temperatura"],  # los ponemos a la misma altura que la temp
+            mode="markers",
+            name="Puerta abierta",
+            marker=dict(color="red", size=10, symbol="x")
+        ))
+
         # Configuración de ejes y layout
         fig.update_layout(
             title="Evolución temporal de la temperatura.",
@@ -138,6 +136,11 @@ def menu_page():
         temp_avg = df['Temperatura'].mean()
         tiempo_fuera_rango = df[(df['Temperatura'] < 2) | (df['Temperatura'] > 8)].shape[0] *3/60
         duracion_total = df.shape[0]*3 /60  # en mins, tenemos 3 segundos entre muestras
+        aperturas = (df['Puerta'].shift(1) == 0) & (df['Puerta'] == 1) #da true cuando pasa de 0 a 1
+        num_aperturas = aperturas.sum()
+
+
+
         idx_inicio_seguro = df[df['Temperatura'].between(2, 8)].first_valid_index()
 
         if idx_inicio_seguro is not None:
@@ -158,12 +161,13 @@ def menu_page():
         with col2:
             st.metric("Tiempo fuera de rango", f"{tiempo_fuera_rango} min")
             st.metric("Duración total", f"{duracion_total:.2f} min")
+            st.metric("Nº veces que se abrió la puerta", num_aperturas)
 
        
 def main():
     if st.session_state.logged_in:
         menu_page()
- 
+
     else:
         login_page()
 
