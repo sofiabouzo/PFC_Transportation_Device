@@ -21,6 +21,14 @@
 #define DOOR_PIN 8
 #define BUZZER_PIN 12   // Pin del MODULADOR del buzzer (HIGH se apaga)
 
+#define LED_25_PIN 27
+#define LED_50_PIN 29
+#define LED_75_PIN 31
+#define LED_100_PIN 33
+
+
+
+
 // Display connections: 5V Y GROUND!!
 // ---------------------------
 // D4         ->  Pin 28 (rojo) 
@@ -83,11 +91,14 @@ int day = 1, month = 1; // starting date
 const int year=25;
 int pinPWM = 4; // pwm pinout 
 
+const float R1= 1800000;
+const float R2= 2200000;
 
 // time management
-unsigned long currentTime; // time since the Arduino was initialized 
+unsigned long currentTime; // time since the recording was initialized
 unsigned long lastSample = 0;
 unsigned long previousTime=0;
+unsigned long startRecordingTime = 0;
 const long freq = 3000; // 3 s
 unsigned long lastSave = 0;
 int status= 1; // to seee if temp is above or below setpoint
@@ -119,9 +130,15 @@ void setup() {
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
   pinMode(YLLW_LED, OUTPUT);
+  pinMode(LED_100_PIN, OUTPUT);
+  pinMode(LED_75_PIN, OUTPUT);
+  pinMode(LED_50_PIN, OUTPUT);
+  pinMode(LED_25_PIN, OUTPUT);
+
   pinMode(DOOR_PIN, INPUT_PULLUP); 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW); // Apagado al inicio
+
   pinMode(pinPWM, OUTPUT);
 
   pid.SetOutputLimits(0, 255);
@@ -163,12 +180,12 @@ void welcomeMessage() {
 Button readLCDButton() {
   int val = analogRead(btn);
   if (val > 1000) return NONE;
-  if (val < 50) return RIGHT;
-  if (val < 200) return UP;
-  if (val < 400) return DOWN;
-  if (val < 600) return LEFT;
-  if (val < 800) return SELECT;
-  return NONE;
+  else if (val < 50) return RIGHT;
+  else if (val < 200) return UP;
+  else if (val < 400) return DOWN;
+  else if (val < 600) return LEFT;
+  else if (val < 800) return SELECT;
+  else return NONE;
 }
 
 // --------------- EDIT POSITION ----------------
@@ -184,6 +201,7 @@ void editDate(Button key) {
 
     case SELECT: // Confirm date with SELECT
       selectedDate = String(day < 10 ? "0" : "") + String(day) + "-" + String(month < 10 ? "0" : "") + String(month) + "-25";
+      startRecordingTime = millis();
       currentState= RECORDING; // exits edition mode
       break;
       
@@ -264,6 +282,8 @@ void displayData() {
       lcd.print(ultimaTemperatura, 2); 
       lcd.print(" C   ");
       lcd.print("        ");
+      //Serial.println(ultimaTemperatura); // borrar esto al final!!
+
       break; 
 
     case IDLE:
@@ -278,7 +298,8 @@ void displayData() {
 // --------------- READ NTC ----------------
 
 int32_t thermistor_get_resistance(uint16_t adcval){
-  return (CONFIG_THERMISTOR_RESISTOR * ((1023.0 / adcval) - 1));
+  float Voc= adcval*5/1023.0;
+  return(CONFIG_THERMISTOR_RESISTOR *(Voc/(5-Voc)));
 }
 
 float thermistor_get_temperature(int32_t resistance){
@@ -323,10 +344,13 @@ void ledOutput(){
 void saveSD(unsigned long t) {
   String fileName = selectedDate + String(".csv");
   File archivo = SD.open(fileName, FILE_WRITE);
+  
   if (archivo) {
     archivo.print(t / 1000);
     archivo.print(",");
-    archivo.println(ultimaTemperatura, 2);
+    archivo.print(ultimaTemperatura, 2);
+    archivo.print(",");
+    archivo.println(255 - output_pid, 2); 
     archivo.flush();
     archivo.close();
   } else {
@@ -352,13 +376,60 @@ void alarm(){
   }
 
 }
+// max battery --> 9V
+// empty battery --> 6V (no longer works as desired)
+// del divisor resistivo, R1= 1.8Mohm R2= 2.2Mohm
+void batteryIndicator(){
+  int batPin = analogRead(BATTERY_LEVEL);
+  float Vadc= batPin * 5.0 / 1023.0;
+  float Vbat = Vadc * (R1 + R2) / R2;
+
+  if (Vbat >= 8.9) {
+    digitalWrite(LED_100_PIN, HIGH);
+    digitalWrite(LED_75_PIN, HIGH);
+    digitalWrite(LED_50_PIN, HIGH);
+    digitalWrite(LED_25_PIN, HIGH);
+  }
+  else if (Vbat >= 8.25) {
+    digitalWrite(LED_100_PIN, LOW);
+    digitalWrite(LED_75_PIN, HIGH);
+    digitalWrite(LED_50_PIN, HIGH);
+    digitalWrite(LED_25_PIN, HIGH);
+  }
+  else if (Vbat >= 7.5) {
+    digitalWrite(LED_100_PIN, LOW);
+    digitalWrite(LED_75_PIN, LOW);
+    digitalWrite(LED_50_PIN, HIGH);
+    digitalWrite(LED_25_PIN, HIGH);
+  }
+  else if (Vbat >= 6.75) {
+    digitalWrite(LED_100_PIN, LOW);
+    digitalWrite(LED_75_PIN, LOW);
+    digitalWrite(LED_50_PIN, LOW);
+    digitalWrite(LED_25_PIN, HIGH);
+  }
+  else {
+  digitalWrite(LED_100_PIN, LOW);
+  digitalWrite(LED_75_PIN, LOW);
+  digitalWrite(LED_50_PIN, LOW);
+
+  // 🔁 Parpadeo del LED de 25%
+  static unsigned long lastBlink = 0;
+  static bool ledState = false;
+  if (millis() - lastBlink >= 500) {  // 500 ms ON, 500 ms OFF
+    lastBlink = millis();
+    ledState = !ledState;
+    digitalWrite(LED_25_PIN, ledState);
+  }
+}
+}
 
 // ISR runs every 1ms
 ISR(TIMER3_COMPA_vect) {
     if(counter > 0) counter--;
     else {
-      counter = 1500;
-      flagSampleTime = (flagSampleTime==true)? false:true; // Changes bool state so the period y twice the counter
+      counter = 3000;
+      flagSampleTime = true; // marca la ocurrencia del evento
     }
 }
 
@@ -397,19 +468,25 @@ void loop() {
       //lcd.print("        "); // Clear the line (8 spaces for DD/MM/YY)
       displayData();       // Show the current date
       delay(200); // for debouncing
+      
       break;
     
     case RECORDING:
       alarm();
       if (flagSampleTime) {
         // de la ISR que se ejecuta cada Ts = 1/fs segundos sale esta flag
+        flagSampleTime = false; //la consumo
         ntc_data();
-        saveSD(currentTime);
-        displayData();
-        ledOutput();
-
+        currentTime = millis() - startRecordingTime;
         pid.Compute();                // Calcula nueva salida PWM
         analogWrite(pinPWM, 255-output_pid);
+
+        saveSD(currentTime);
+
+        displayData();
+        ledOutput();
+        batteryIndicator();
+
       }
 
 
@@ -418,6 +495,7 @@ void loop() {
     
     case IDLE:
       analogWrite(pinPWM, 255);
+      currentTime = millis() - startRecordingTime;
       saveSD(currentTime);
       displayData(); // Shows the stopping message
       break;
